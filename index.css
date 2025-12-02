@@ -1,0 +1,49 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+.khmer-text {
+  font-family: 'Kantumruy Pro', sans-serif;
+}
+/* Custom scrollbar for editor */
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  cursor: text;
+}
+.dark [contenteditable]:empty:before {
+  color: #64748b;
+}
+
+/* Visual style for Zero Width Space when 'Show Invisibles' is on */
+.invisible-zwsp {
+  display: inline-block;
+  width: 4px;
+  height: 1em;
+  vertical-align: middle;
+  position: relative;
+  margin: 0 1px;
+  border-radius: 1px;
+  background-color: rgba(19, 127, 236, 0.2); /* Primary color low opacity */
+  cursor: default;
+}
+.invisible-zwsp::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  background-color: #137fec;
+}
+.dark .invisible-zwsp {
+  background-color: rgba(19, 127, 236, 0.4);
+}
+.dark .invisible-zwsp::after {
+  background-color: #60a5fa;
+}
