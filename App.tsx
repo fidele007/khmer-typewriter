@@ -29,7 +29,8 @@ import {
   Eye,
   EyeOff,
   X,
-  Clock
+  Clock,
+  Edit2
 } from 'lucide-react';
 import VirtualKeyboard from './components/VirtualKeyboard';
 import { KEYBOARD_LAYOUT } from './constants';
@@ -45,6 +46,7 @@ interface SavedDoc {
 const App: React.FC = () => {
   // --- State ---
   const [textContent, setTextContent] = useState('');
+  const [docTitle, setDocTitle] = useState('New Document');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isKhmerMode, setIsKhmerMode] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -117,6 +119,7 @@ const App: React.FC = () => {
       updateStats();
     }
     setCurrentDocId(null);
+    setDocTitle('New Document');
     setShowInvisibles(false); // Reset view mode
     if (isSidebarOpen) setIsSidebarOpen(false);
   };
@@ -124,6 +127,11 @@ const App: React.FC = () => {
   const saveDocument = () => {
     if (!editorRef.current) return;
     
+    // Ask for document name
+    const inputName = prompt("Enter document name:", docTitle);
+    const finalTitle = (inputName !== null && inputName.trim() !== "") ? inputName.trim() : docTitle;
+    setDocTitle(finalTitle);
+
     // Ensure we save the 'raw' content without visual helpers for invisibles
     let contentToSave = editorRef.current.innerHTML;
     if (showInvisibles) {
@@ -131,7 +139,6 @@ const App: React.FC = () => {
         contentToSave = contentToSave.replace(/<span class="invisible-zwsp"[^>]*><\/span>/g, '\u200b');
     }
 
-    const title = editorRef.current.innerText.trim().slice(0, 40) || "Untitled Document";
     const timestamp = Date.now();
 
     let updatedDocs: SavedDoc[];
@@ -140,7 +147,7 @@ const App: React.FC = () => {
       // Update existing
       updatedDocs = savedDocs.map(doc => 
         doc.id === currentDocId 
-          ? { ...doc, title, content: contentToSave, timestamp } 
+          ? { ...doc, title: finalTitle, content: contentToSave, timestamp } 
           : doc
       );
     } else {
@@ -148,7 +155,7 @@ const App: React.FC = () => {
       const newId = crypto.randomUUID();
       const newDoc: SavedDoc = {
         id: newId,
-        title,
+        title: finalTitle,
         content: contentToSave,
         timestamp
       };
@@ -158,9 +165,6 @@ const App: React.FC = () => {
 
     setSavedDocs(updatedDocs);
     saveDocsToStorage(updatedDocs);
-    
-    // Visual feedback could be added here (toast)
-    // alert('Document saved!'); 
   };
 
   const loadDocument = (doc: SavedDoc) => {
@@ -179,6 +183,7 @@ const App: React.FC = () => {
       updateStats();
     }
     setCurrentDocId(doc.id);
+    setDocTitle(doc.title);
     setIsSidebarOpen(false);
   };
 
@@ -191,6 +196,8 @@ const App: React.FC = () => {
       
       if (currentDocId === id) {
         setCurrentDocId(null);
+        setDocTitle("New Document");
+        // We do not clear content, treating it as an unsaved draft of the deleted file
       }
     }
   };
@@ -204,11 +211,7 @@ const App: React.FC = () => {
 
   const applyInvisiblesVisuals = () => {
     if (!editorRef.current) return;
-    // Replace raw ZWSP with visual span
-    // Regex matches \u200b
-    // We use contenteditable="false" so backspace deletes the whole unit easily
     const html = editorRef.current.innerHTML;
-    // Prevent double wrapping
     if (!html.includes('invisible-zwsp')) {
         const newHtml = html.replace(/\u200b/g, '<span class="invisible-zwsp" contenteditable="false"></span>');
         if (newHtml !== html) {
@@ -235,8 +238,6 @@ const App: React.FC = () => {
     } else {
         removeInvisiblesVisuals();
     }
-    // Note: InnerHTML replacement resets cursor. 
-    // For a complex editor, we'd need Range restoration, but for this feature set, resetting focus is acceptable.
     editorRef.current?.focus();
   };
 
@@ -252,19 +253,7 @@ const App: React.FC = () => {
 
   const updateStats = () => {
     if (editorRef.current) {
-        // We get innerText for stats. 
-        // Note: innerText usually ignores hidden elements, but our span is visible.
-        // However, we want the count of actual characters.
-        // innerText might map the span to nothing or newline depending on browser.
-        // Let's rely on cleaning the HTML for accurate count if needed, 
-        // but simple innerText is usually "what the user sees".
-        // For accurate count including ZWSP:
         let text = editorRef.current.innerText || '';
-        if (showInvisibles) {
-            // innerText might behave oddly with our spans. 
-            // Let's trust textContent of the node but that includes styles text.
-            // Actually, let's just use the current state logic.
-        }
         setTextContent(text);
     }
   };
@@ -304,6 +293,18 @@ const App: React.FC = () => {
       updateStats();
   }, []);
 
+  const moveCursor = useCallback((direction: 'forward' | 'backward', granularity: 'character' | 'line') => {
+      if (document.activeElement !== editorRef.current) {
+          editorRef.current?.focus();
+      }
+      const selection = window.getSelection();
+      // Using non-standard but widely supported selection.modify
+      if (selection && (selection as any).modify) {
+          (selection as any).modify('move', direction, granularity);
+          updateStats(); // Update logic dependent on cursor pos if needed
+      }
+  }, []);
+
   const handleVirtualKeyPress = (keyData: KeyData) => {
     if (keyData.code === 'ShiftLeft' || keyData.code === 'ShiftRight') {
       setKeyboardState(prev => ({ ...prev, isShift: !prev.isShift }));
@@ -332,6 +333,23 @@ const App: React.FC = () => {
 
     if (keyData.code === 'Enter') {
         insertParagraph();
+        return;
+    }
+
+    if (keyData.code === 'ArrowLeft') {
+        moveCursor('backward', 'character');
+        return;
+    }
+    if (keyData.code === 'ArrowRight') {
+        moveCursor('forward', 'character');
+        return;
+    }
+    if (keyData.code === 'ArrowUp') {
+        moveCursor('backward', 'line');
+        return;
+    }
+    if (keyData.code === 'ArrowDown') {
+        moveCursor('forward', 'line');
         return;
     }
 
@@ -408,8 +426,6 @@ const App: React.FC = () => {
     
     setTimeout(() => {
         if (editorRef.current) {
-            // If we are showing invisibles, innerText might not trigger updates correctly if only tags change?
-            // But here we are typing, so text changes.
             updateStats();
         }
     }, 0);
@@ -665,12 +681,19 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className={`flex-1 w-full mx-auto flex flex-col ${isFullScreen ? '' : 'max-w-5xl p-4 sm:p-6 lg:p-8 gap-6'}`}>
         {!isFullScreen && (
-          <div className="flex flex-col gap-1">
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              Khmer Typewriter
-            </h2>
-            <p className="text-slate-500 dark:text-slate-400">
-              A rich text editor with virtual Khmer Unicode support.
+          <div className="flex flex-col gap-1 w-full">
+            <div className="flex items-center gap-2">
+                <input 
+                    value={docTitle} 
+                    onChange={(e) => setDocTitle(e.target.value)} 
+                    className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight bg-transparent border-none focus:ring-0 p-0 placeholder-slate-400 w-full"
+                    placeholder="Document Title"
+                />
+                <Edit2 size={20} className="text-slate-400 opacity-50 flex-shrink-0" />
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                {currentDocId ? "Saved Document" : "Unsaved Draft"}
+                {currentDocId && <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">Saved</span>}
             </p>
           </div>
         )}

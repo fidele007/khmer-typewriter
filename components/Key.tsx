@@ -24,12 +24,8 @@ const Key: React.FC<KeyProps> = ({ data, isShift, isActive, onPress }) => {
   const renderIcon = () => {
     if (data.icon === 'ChevronLeft') return <ChevronLeft size={20} />;
     if (data.icon === 'ChevronRight') return <ChevronRight size={20} />;
-    if (data.icon === 'ChevronsUpDown') return (
-        <div className="flex flex-col items-center justify-center -space-y-1">
-            <ChevronUp size={16} />
-            <ChevronDown size={16} />
-        </div>
-    );
+    if (data.icon === 'ChevronUp') return <ChevronUp size={20} />;
+    if (data.icon === 'ChevronDown') return <ChevronDown size={20} />;
     return null;
   };
 

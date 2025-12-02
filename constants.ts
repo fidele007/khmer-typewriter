@@ -78,7 +78,8 @@ export const KEYBOARD_LAYOUT: KeyData[][] = [
     { code: 'AltRight', en: '', km: '', kmShift: '', label: 'Alt', type: 'modifier', width: 3 },
     { code: 'ControlRight', en: '', km: '', kmShift: '', label: 'Ctrl', type: 'modifier', width: 3 },
     { code: 'ArrowLeft', en: '', km: '', kmShift: '', label: '', type: 'action', icon: 'ChevronLeft', width: 1 },
-    { code: 'ArrowUpDown', en: '', km: '', kmShift: '', label: '', type: 'action', icon: 'ChevronsUpDown', width: 2 },
+    { code: 'ArrowDown', en: '', km: '', kmShift: '', label: '', type: 'action', icon: 'ChevronDown', width: 1 },
+    { code: 'ArrowUp', en: '', km: '', kmShift: '', label: '', type: 'action', icon: 'ChevronUp', width: 1 },
     { code: 'ArrowRight', en: '', km: '', kmShift: '', label: '', type: 'action', icon: 'ChevronRight', width: 1 },
   ]
 ];
