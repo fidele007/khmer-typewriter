@@ -19,7 +19,6 @@ const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({ state, onKeyPress }) 
             state.activeKeys.has(keyData.code) ||
             (keyData.code === "ShiftLeft" && state.isShift) ||
             (keyData.code === "ShiftRight" && state.isShift) ||
-            (keyData.code === "AltLeft" && state.isRightAlt) ||
             (keyData.code === "AltRight" && state.isRightAlt) ||
             (keyData.code === "CapsLock" && state.isCaps);
 

@@ -3,7 +3,6 @@ import {
   Keyboard,
   Copy,
   Trash2,
-  HelpCircle,
   Moon,
   Sun,
   Bold,
@@ -310,8 +309,8 @@ const App: React.FC = () => {
       return;
     }
 
-    if (keyData.code === "AltLeft" || keyData.code === "AltRight") {
-      setKeyboardState((prev) => ({ ...prev, isShift: !prev.isRightAlt }));
+    if (keyData.code === "AltRight") {
+      setKeyboardState((prev) => ({ ...prev, isRightAlt: !prev.isRightAlt }));
       return;
     }
 
@@ -388,9 +387,11 @@ const App: React.FC = () => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const code = e.code;
+      const isRightAlt = e.getModifierState("AltGraph");
 
       // Update visual state
       setKeyboardState((prev) => {
+        console.log("prev.activeKeys", prev.activeKeys);
         const newActive = new Set(prev.activeKeys);
         newActive.add(code);
 
@@ -399,10 +400,19 @@ const App: React.FC = () => {
           newShift = true;
         }
 
+        let newRightAlt = prev.isRightAlt;
+        if (isRightAlt) {
+          newRightAlt = true;
+          // On many keyboard layouts, AltGr is internally treated by the OS as a combination of Ctrl+Alt
+          // So we need to remove the "ControlLeft" key from the active keys for visual consistency
+          newActive.delete("ControlLeft");
+        }
+
         return {
           ...prev,
           activeKeys: newActive,
           isShift: newShift,
+          isRightAlt: newRightAlt,
         };
       });
 
@@ -421,7 +431,6 @@ const App: React.FC = () => {
             e.preventDefault();
 
             const isShift = e.shiftKey;
-            const isRightAlt = e.getModifierState("AltGraph");
             const isCaps = e.getModifierState("CapsLock");
             const isNumberRow = ["Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Digit0", "Minus", "Equal"].includes(code);
 
@@ -458,11 +467,18 @@ const App: React.FC = () => {
     setKeyboardState((prev) => {
       const newActive = new Set(prev.activeKeys);
       newActive.delete(code);
+
       let newShift = prev.isShift;
       if (code === "ShiftLeft" || code === "ShiftRight") {
         newShift = false;
       }
-      return { ...prev, activeKeys: newActive, isShift: newShift };
+
+      let newRightAlt = prev.isRightAlt;
+      if (!e.getModifierState("AltGraph")) {
+        newRightAlt = false;
+      }
+
+      return { ...prev, activeKeys: newActive, isShift: newShift, isRightAlt: newRightAlt };
     });
   }, []);
 
