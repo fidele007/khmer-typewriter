@@ -74,7 +74,7 @@ export const KEYBOARD_LAYOUT: KeyData[][] = [
     { code: "Fn", en: "", km: "", enShift: "", kmShift: "", label: "Fn", type: "modifier", width: 2 },
     { code: "MetaLeft", en: "", enShift: "", km: "", kmShift: "", label: "Win", type: "modifier", width: 3 },
     { code: "AltLeft", en: "", enShift: "", km: "", kmShift: "", label: "Alt", type: "modifier", width: 3 },
-    { code: "Space", en: "", enShift: "", km: "", kmShift: "", label: "Space", type: "char", width: 9 },
+    { code: "Space", en: " ", enShift: " ", km: "​", kmShift: " ", label: "Space", type: "char", width: 9 },
     { code: "AltRight", en: "", enShift: "", km: "", kmShift: "", label: "Alt", type: "modifier", width: 3 },
     { code: "ControlRight", en: "", enShift: "", km: "", kmShift: "", label: "Ctrl", type: "modifier", width: 3 },
     { code: "ArrowLeft", en: "", enShift: "", km: "", kmShift: "", label: "", type: "action", icon: "ChevronLeft", width: 1 },

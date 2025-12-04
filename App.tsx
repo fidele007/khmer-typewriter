@@ -324,10 +324,10 @@ const App: React.FC = () => {
       return;
     }
 
-    if (keyData.code === "Space") {
-      insertCharacter(" ");
-      return;
-    }
+    // if (keyData.code === "Space") {
+    //   insertCharacter(" ");
+    //   return;
+    // }
 
     if (keyData.code === "Tab") {
       insertCharacter("\t");
@@ -391,7 +391,6 @@ const App: React.FC = () => {
 
       // Update visual state
       setKeyboardState((prev) => {
-        console.log("prev.activeKeys", prev.activeKeys);
         const newActive = new Set(prev.activeKeys);
         newActive.add(code);
 
@@ -777,7 +776,7 @@ const App: React.FC = () => {
               isFullScreen ? "flex-1 h-full" : "h-64 sm:h-80"
             }`}
             data-placeholder="ចាប់ផ្តើមវាយអក្សរខ្មែរនៅទីនេះ... (Start typing Khmer here...)"
-            spellCheck={false}
+            spellCheck={true}
           />
 
           {/* Status Bar */}
