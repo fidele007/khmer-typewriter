@@ -3,6 +3,7 @@ import { KeyData } from "../types";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 
 interface KeyProps {
+  isKhmerMode: boolean;
   data: KeyData;
   isShift: boolean;
   isRightAlt: boolean;
@@ -10,7 +11,7 @@ interface KeyProps {
   onPress: (data: KeyData) => void;
 }
 
-const Key: React.FC<KeyProps> = ({ data, isShift, isRightAlt, isActive, onPress }) => {
+const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, isActive, onPress }) => {
   // Dynamic Styles
   const baseStyles =
     "relative flex items-center justify-center rounded-lg shadow-sm border-b-4 border-slate-300 dark:border-slate-900 transition-all duration-100 select-none active:border-b active:translate-y-[3px]";
@@ -38,7 +39,7 @@ const Key: React.FC<KeyProps> = ({ data, isShift, isRightAlt, isActive, onPress 
   } else if (data.label) {
     content = <span>{data.label}</span>;
   } else {
-    content = (
+    content = isKhmerMode ? (
       <>
         {/* Khmer Character (Center/Primary) */}
         <span className={`z-10 ${isShift || isRightAlt ? "hidden" : "block"}`}>{data.km}</span>
@@ -53,6 +54,15 @@ const Key: React.FC<KeyProps> = ({ data, isShift, isRightAlt, isActive, onPress 
 
         {/* Bottom Right (English Char hint) */}
         <span className="absolute bottom-1 right-1.5 text-[0.65rem] opacity-60 font-sans font-bold leading-none">{data.en}</span>
+      </>
+    ) : (
+      <>
+        {/* English Character (Center/Primary) */}
+        <span className={`z-10 ${isShift ? "hidden" : "block"}`}>{data.en}</span>
+        <span className={`z-10 ${isShift ? "block" : "hidden"}`}>{data.enShift}</span>
+
+        {/* Top Right (Shift Char hint) */}
+        <span className="absolute top-1 right-1.5 text-[0.65rem] opacity-60 font-khmer leading-none">{data.enShift}</span>
       </>
     );
   }

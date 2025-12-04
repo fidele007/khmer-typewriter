@@ -1,6 +1,7 @@
 export interface KeyData {
   code: string;
   en: string;
+  enShift: string;
   km: string;
   kmShift: string;
   kmAlt?: string;

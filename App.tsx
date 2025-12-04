@@ -794,7 +794,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Virtual Keyboard */}
-        {!isFullScreen && <VirtualKeyboard state={keyboardState} onKeyPress={handleVirtualKeyPress} />}
+        {!isFullScreen && <VirtualKeyboard isKhmerMode={isKhmerMode} state={keyboardState} onKeyPress={handleVirtualKeyPress} />}
       </main>
 
       {/* Footer */}
