@@ -1,5 +1,5 @@
 import "./App.css";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, type CompositionEventHandler } from "react";
 import {
   Keyboard,
   Copy,
@@ -256,6 +256,22 @@ const App: React.FC = () => {
   }, []);
 
   // --- Keyboard Handling ---
+  const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+
+  const handleCompositionStart = useCallback(
+    (e: CompositionEvent) => {
+      if (isKhmerMode && isMac) {
+        e.target?.setAttribute("contentEditable", false);
+        setTimeout(function () {
+          e.target?.setAttribute("contentEditable", true);
+          if (document.activeElement !== editorRef.current) {
+            editorRef.current?.focus();
+          }
+        }, 200);
+      }
+    },
+    [isKhmerMode, isMac]
+  );
 
   const insertCharacter = useCallback(
     (char: string) => {
@@ -389,7 +405,7 @@ const App: React.FC = () => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const code = e.code;
-      const isRightAlt = e.getModifierState("AltGraph");
+      const isRightAlt = e.getModifierState("AltGraph") || e.altKey;
 
       // Update visual state
       setKeyboardState((prev) => {
@@ -423,7 +439,7 @@ const App: React.FC = () => {
       }
 
       // IME Logic
-      if (isKhmerMode && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (isKhmerMode && !e.ctrlKey && !e.metaKey) {
         const keyData = keyMap.get(code);
         if (keyData) {
           const isTypingKey = (!keyData.type || keyData.type === "char") && (keyData.km || keyData.kmShift || keyData.kmAlt);
@@ -475,7 +491,7 @@ const App: React.FC = () => {
       }
 
       let newRightAlt = prev.isRightAlt;
-      if (!e.getModifierState("AltGraph")) {
+      if (!e.getModifierState("AltGraph") && !e.altKey) {
         newRightAlt = false;
       }
 
@@ -773,6 +789,7 @@ const App: React.FC = () => {
           <div
             ref={editorRef}
             contentEditable
+            onCompositionStart={handleCompositionStart}
             onInput={updateStats}
             className={`w-full p-6 bg-white dark:bg-slate-800 text-xl sm:text-2xl font-khmer leading-relaxed outline-hidden overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_a]:text-blue-500 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg [&_img]:inline-block ${
               isFullScreen ? "flex-1 h-full" : "h-64 sm:h-80"
