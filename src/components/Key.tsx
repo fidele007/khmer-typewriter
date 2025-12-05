@@ -1,5 +1,5 @@
 import React from "react";
-import { KeyData } from "../types";
+import type { KeyData } from "../lib/types";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 
 interface KeyProps {
@@ -14,7 +14,7 @@ interface KeyProps {
 const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, isActive, onPress }) => {
   // Dynamic Styles
   const baseStyles =
-    "relative flex items-center justify-center rounded-lg shadow-sm border-b-4 border-slate-300 dark:border-slate-900 transition-all duration-100 select-none active:border-b active:translate-y-[3px]";
+    "relative flex items-center justify-center rounded-lg shadow-xs border-b-4 border-slate-300 dark:border-slate-900 transition-all duration-100 select-none active:border-b active:translate-y-[3px]";
   const activeStyles = isActive
     ? "bg-primary text-white border-primary-hover dark:border-blue-900 translate-y-[2px] border-b-2"
     : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600";
@@ -29,6 +29,13 @@ const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, isAct
     if (data.icon === "ChevronRight") return <ChevronRight size={20} />;
     if (data.icon === "ChevronUp") return <ChevronUp size={20} />;
     if (data.icon === "ChevronDown") return <ChevronDown size={20} />;
+    // if (data.icon === "ChevronsUpDown")
+    //   return (
+    //     <div className="flex flex-col items-center justify-center gap-2">
+    //       <ChevronUp size={20} />
+    //       <ChevronDown size={20} />
+    //     </div>
+    //   );
     return null;
   };
 

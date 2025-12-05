@@ -1,3 +1,4 @@
+import "./App.css";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Keyboard,
@@ -32,8 +33,8 @@ import {
   Edit2,
 } from "lucide-react";
 import VirtualKeyboard from "./components/VirtualKeyboard";
-import { KEYBOARD_LAYOUT } from "./constants";
-import { KeyboardState, KeyData } from "./types";
+import { KEYBOARD_LAYOUT } from "./lib/constants";
+import type { KeyboardState, KeyData } from "./lib/types";
 
 interface SavedDoc {
   id: string;
@@ -101,6 +102,13 @@ const App: React.FC = () => {
   // Simple word count approximation for mixed text
   const wordCount = textContent.trim() === "" ? 0 : textContent.trim().split(/\s+/).length;
 
+  const updateStats = () => {
+    if (editorRef.current) {
+      const text = editorRef.current.innerText || "";
+      setTextContent(text);
+    }
+  };
+
   // --- Document Logic ---
 
   const saveDocsToStorage = (docs: SavedDoc[]) => {
@@ -139,6 +147,7 @@ const App: React.FC = () => {
       contentToSave = contentToSave.replace(/<span class="invisible-zwsp"[^>]*><\/span>/g, "\u200b");
     }
 
+    // eslint-disable-next-line react-hooks/purity
     const timestamp = Date.now();
 
     let updatedDocs: SavedDoc[];
@@ -245,13 +254,6 @@ const App: React.FC = () => {
     document.execCommand(command, false, value);
     updateStats();
   }, []);
-
-  const updateStats = () => {
-    if (editorRef.current) {
-      let text = editorRef.current.innerText || "";
-      setTextContent(text);
-    }
-  };
 
   // --- Keyboard Handling ---
 
@@ -557,11 +559,11 @@ const App: React.FC = () => {
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
 
       {/* Sidebar Overlay */}
-      {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-[60] transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-60 transition-opacity" onClick={() => setIsSidebarOpen(false)} />}
 
       {/* Documents Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-0 right-0 h-full w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-70 transform transition-transform duration-300 ease-in-out flex flex-col ${
           isSidebarOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -689,7 +691,7 @@ const App: React.FC = () => {
                 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight bg-transparent border-none focus:ring-0 p-0 placeholder-slate-400 w-full"
                 placeholder="Document Title"
               />
-              <Edit2 size={20} className="text-slate-400 opacity-50 flex-shrink-0" />
+              <Edit2 size={20} className="text-slate-400 opacity-50 shrink-0" />
             </div>
             <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
               {currentDocId ? "Saved Document" : "Unsaved Draft"}
@@ -703,7 +705,7 @@ const App: React.FC = () => {
           className={`flex flex-col bg-white dark:bg-slate-800 overflow-hidden transition-all ${
             isFullScreen
               ? "fixed inset-0 z-50 h-screen w-screen border-0 rounded-none"
-              : "border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary"
+              : "border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-xs focus-within:border-primary focus-within:ring-1 focus-within:ring-primary"
           }`}
         >
           {/* Formatting Toolbar */}
@@ -745,7 +747,7 @@ const App: React.FC = () => {
 
             <ToolbarButton onClick={toggleFullScreen} icon={isFullScreen ? Minimize : Maximize} title={isFullScreen ? "Exit Full Screen" : "Full Screen"} />
 
-            <div className="flex-1 min-w-[10px]"></div>
+            <div className="flex-1 min-w-2.5"></div>
 
             <button
               onClick={copyToClipboard}
@@ -772,7 +774,7 @@ const App: React.FC = () => {
             ref={editorRef}
             contentEditable
             onInput={updateStats}
-            className={`w-full p-6 bg-white dark:bg-slate-800 text-xl sm:text-2xl font-khmer leading-relaxed outline-none overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_a]:text-blue-500 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg [&_img]:inline-block ${
+            className={`w-full p-6 bg-white dark:bg-slate-800 text-xl sm:text-2xl font-khmer leading-relaxed outline-hidden overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_a]:text-blue-500 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg [&_img]:inline-block ${
               isFullScreen ? "flex-1 h-full" : "h-64 sm:h-80"
             }`}
             data-placeholder="ចាប់ផ្តើមវាយអក្សរខ្មែរនៅទីនេះ... (Start typing Khmer here...)"
