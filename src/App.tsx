@@ -1,5 +1,5 @@
 import "./App.css";
-import React, { useState, useEffect, useRef, useCallback, useMemo, type CompositionEventHandler } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Keyboard,
   Copy,
@@ -259,11 +259,11 @@ const App: React.FC = () => {
   const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
 
   const handleCompositionStart = useCallback(
-    (e: CompositionEvent) => {
+    (e: React.CompositionEvent<HTMLDivElement>) => {
       if (isKhmerMode && isMac) {
-        e.target?.setAttribute("contentEditable", false);
+        (e.target as HTMLElement)?.setAttribute("contentEditable", "false");
         setTimeout(function () {
-          e.target?.setAttribute("contentEditable", true);
+          (e.target as HTMLElement)?.setAttribute("contentEditable", "true");
           if (document.activeElement !== editorRef.current) {
             editorRef.current?.focus();
           }
@@ -301,6 +301,118 @@ const App: React.FC = () => {
     updateStats();
   }, []);
 
+  const findParentSpan = (node: Node, root: HTMLElement): HTMLSpanElement | null => {
+    while (node && node !== root) {
+      if (node.nodeType === 1 && node instanceof HTMLElement && node.tagName === "SPAN") {
+        return node as HTMLSpanElement;
+      }
+      node = node.parentNode as Node;
+    }
+    return null;
+  };
+
+  const placeCaretAfter = (node: Node) => {
+    const range = document.createRange();
+    const sel = window.getSelection()!;
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      range.setStart(node, node.textContent?.length ?? 0);
+    } else {
+      range.setStartAfter(node);
+    }
+
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const deleteSpan = useCallback((span: HTMLSpanElement) => {
+    const parent = span.parentNode!;
+    let caretNode: Node | null = span.previousSibling;
+
+    span.remove();
+
+    if (!caretNode) {
+      caretNode = parent;
+    }
+
+    placeCaretAfter(caretNode);
+  }, []);
+
+  const isCaretAtStartOfSpan = (range: Range, span: Node) => {
+    // Caret is inside a text node inside span
+    if (range.startContainer !== span && span.contains(range.startContainer)) {
+      return range.startOffset === 0;
+    }
+
+    // Caret directly inside span (no text node)
+    if (range.startContainer === span && range.startOffset === 0) {
+      return true;
+    }
+
+    return false;
+  };
+
+  function getPreviousSiblingSpan(node: Node, offset: number): HTMLSpanElement | null {
+    // caret inside text node
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (offset > 0) return null;
+
+      let prev = node.previousSibling;
+      while (prev) {
+        if (prev instanceof HTMLElement && prev.tagName === "SPAN") {
+          return prev as HTMLSpanElement;
+        }
+        prev = prev.previousSibling;
+      }
+      return null;
+    }
+
+    // caret inside element
+    if (node instanceof HTMLElement) {
+      const prev = node.childNodes[offset - 1];
+      if (prev instanceof HTMLElement && prev.tagName === "SPAN") {
+        return prev as HTMLSpanElement;
+      }
+    }
+
+    return null;
+  }
+
+  const deleteSpanIfPossible = useCallback(
+    (e: KeyboardEvent) => {
+      if (document.activeElement !== editorRef.current) {
+        editorRef.current?.focus();
+      }
+      const selection = window.getSelection();
+      if (!selection?.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return;
+
+      const node = range.startContainer;
+      const offset = range.startOffset;
+
+      const parentSpan = findParentSpan(node, editorRef.current!);
+      if (parentSpan) {
+        if (isCaretAtStartOfSpan(range, parentSpan)) {
+          e.preventDefault();
+          deleteSpan(parentSpan);
+          updateStats();
+        }
+        return;
+      }
+
+      // Try deleting previous span if caret is immediately after it
+      const prevSpan = getPreviousSiblingSpan(node, offset);
+      if (prevSpan) {
+        e.preventDefault();
+        deleteSpan(prevSpan);
+        updateStats();
+      }
+    },
+    [deleteSpan]
+  );
+
   const insertParagraph = useCallback(() => {
     if (document.activeElement !== editorRef.current) {
       editorRef.current?.focus();
@@ -315,8 +427,8 @@ const App: React.FC = () => {
     }
     const selection = window.getSelection();
     // Using non-standard but widely supported selection.modify
-    if (selection && (selection as any).modify) {
-      (selection as any).modify("move", direction, granularity);
+    if (selection?.modify) {
+      selection.modify("move", direction, granularity);
       updateStats(); // Update logic dependent on cursor pos if needed
     }
   }, []);
@@ -467,13 +579,17 @@ const App: React.FC = () => {
         }
       }
 
+      if (e.key === "Backspace" && !isRightAlt && !e.metaKey && !e.ctrlKey) {
+        deleteSpanIfPossible(e);
+      }
+
       setTimeout(() => {
         if (editorRef.current) {
           updateStats();
         }
       }, 0);
     },
-    [isKhmerMode, insertCharacter, keyMap]
+    [isKhmerMode, keyMap, insertCharacter, deleteSpanIfPossible]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
