@@ -380,7 +380,7 @@ const App: React.FC = () => {
   }
 
   const deleteSpanIfPossible = useCallback(
-    (e: KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (document.activeElement !== editorRef.current) {
         editorRef.current?.focus();
       }
@@ -592,7 +592,7 @@ const App: React.FC = () => {
     [isKhmerMode, keyMap, insertCharacter, deleteSpanIfPossible]
   );
 
-  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+  const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     const code = e.code;
     if (code === "CapsLock") {
       setKeyboardState((prev) => ({ ...prev, isCaps: e.getModifierState("CapsLock") }));
@@ -614,15 +614,6 @@ const App: React.FC = () => {
       return { ...prev, activeKeys: newActive, isShift: newShift, isRightAlt: newRightAlt };
     });
   }, []);
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [handleKeyDown, handleKeyUp]);
 
   // --- Toolbar Actions ---
 
@@ -906,6 +897,8 @@ const App: React.FC = () => {
             ref={editorRef}
             contentEditable
             onCompositionStart={handleCompositionStart}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
             onInput={updateStats}
             className={`w-full p-6 bg-white dark:bg-slate-800 text-xl sm:text-2xl font-khmer leading-relaxed outline-hidden overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_a]:text-blue-500 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg [&_img]:inline-block ${
               isFullScreen ? "flex-1 h-full" : "h-64 sm:h-80"
