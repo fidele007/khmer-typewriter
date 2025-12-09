@@ -758,7 +758,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 text-primary flex items-center justify-center bg-primary/10 rounded-lg">
               {/* <Keyboard size={20} /> */}
-              <img src="/khmer-typewriter.svg" alt="Khmer Typewriter" />
+              <img src="./khmer-typewriter.svg" alt="Khmer Typewriter" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white hidden sm:block">Khmer Typewriter</h1>
           </div>
