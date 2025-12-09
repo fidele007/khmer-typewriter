@@ -257,6 +257,18 @@ const App: React.FC = () => {
   // --- Keyboard Handling ---
   const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isIOSWebKit = (): boolean => {
+    if (typeof navigator === "undefined") return false;
+
+    const ua = navigator.userAgent;
+    const platform = navigator.platform;
+    const maxTouchPoints = navigator.maxTouchPoints || 0;
+
+    // iPhone, iPod, iPad (iPadOS 13+ reports as MacIntel)
+    const isIOS = /iP(ad|hone|od)/.test(ua) || (platform === "MacIntel" && maxTouchPoints > 1);
+
+    return isIOS;
+  };
 
   const handleCompositionStart = useCallback(
     (e: React.CompositionEvent<HTMLDivElement>) => {
@@ -573,7 +585,7 @@ const App: React.FC = () => {
             }
 
             if (char) {
-              if (e.key === "Dead" && isKhmerMode && isSafari) {
+              if (e.key === "Dead" && isKhmerMode && (isSafari || isIOSWebKit())) {
                 setTimeout(() => {
                   insertCharacter(char);
                 });
