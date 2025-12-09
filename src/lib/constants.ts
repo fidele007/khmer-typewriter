@@ -1,4 +1,4 @@
-import { KeyData } from "./types";
+import type { KeyData } from "./types";
 
 // Based on a 30-column grid system for better alignment
 // Regular keys are 2 cols wide.
