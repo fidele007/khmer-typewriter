@@ -257,6 +257,7 @@ const App: React.FC = () => {
 
   // --- Keyboard Handling ---
   const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
   const handleCompositionStart = useCallback(
     (e: React.CompositionEvent<HTMLDivElement>) => {
@@ -267,7 +268,7 @@ const App: React.FC = () => {
           if (document.activeElement !== editorRef.current) {
             editorRef.current?.focus();
           }
-        }, 200);
+        });
       }
     },
     [isKhmerMode, isMac]
@@ -515,7 +516,7 @@ const App: React.FC = () => {
 
   // Physical Keyboard Handling
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
       const code = e.code;
       const isRightAlt = e.getModifierState("AltGraph") || e.altKey;
 
@@ -573,7 +574,13 @@ const App: React.FC = () => {
             }
 
             if (char) {
-              insertCharacter(char);
+              if (e.key === "Dead" && isKhmerMode && isSafari) {
+                setTimeout(() => {
+                  insertCharacter(char);
+                });
+              } else {
+                insertCharacter(char);
+              }
             }
           }
         }
