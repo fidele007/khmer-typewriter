@@ -17,3 +17,7 @@ export interface KeyboardState {
   isCaps: boolean;
   activeKeys: Set<string>;
 }
+
+export type Language = "en" | "km" | "fr";
+
+export type Theme = "light" | "dark" | "system";

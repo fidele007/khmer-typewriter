@@ -5,6 +5,7 @@ import {
   Trash2,
   Moon,
   Sun,
+  Monitor,
   Bold,
   Italic,
   Underline,
@@ -30,10 +31,12 @@ import {
   X,
   Clock,
   Edit2,
+  ChevronDown,
 } from "lucide-react";
 import VirtualKeyboard from "./components/VirtualKeyboard";
 import { KEYBOARD_LAYOUT } from "./lib/constants";
-import type { KeyboardState, KeyData } from "./lib/types";
+import type { KeyboardState, KeyData, Language, Theme } from "./lib/types";
+import { translations } from "./lib/translations";
 
 interface SavedDoc {
   id: string;
@@ -46,10 +49,25 @@ const App: React.FC = () => {
   // --- State ---
   const [textContent, setTextContent] = useState("");
   const [docTitle, setDocTitle] = useState("New Document");
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isKhmerMode, setIsKhmerMode] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showInvisibles, setShowInvisibles] = useState(false);
+  
+  // Theme State
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem("khmer-typewriter-theme") as Theme;
+    return (saved === "light" || saved === "dark" || saved === "system") ? saved : "system";
+  });
+  
+  // Localization State
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem("khmer-typewriter-lang");
+    return (saved === "en" || saved === "km" || saved === "fr") ? saved : "km";
+  });
+
+  // Editor State
+  const [currentFont, setCurrentFont] = useState("Kantumruy Pro");
+  const [currentSize, setCurrentSize] = useState("3");
 
   // Document Management State
   const [savedDocs, setSavedDocs] = useState<SavedDoc[]>([]);
@@ -65,6 +83,8 @@ const App: React.FC = () => {
 
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const t = translations[language];
 
   // --- Initialization & Effects ---
 
@@ -87,14 +107,44 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Toggle Dark Mode
+  // Theme Management
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    const root = document.documentElement;
+    const applyTheme = (targetTheme: Theme) => {
+      let effectiveTheme = targetTheme;
+      if (targetTheme === 'system') {
+        effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      
+      if (effectiveTheme === 'dark') {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      } else {
+        root.classList.add('light');
+        root.classList.remove('dark');
+      }
+    };
+
+    applyTheme(theme);
+    localStorage.setItem("khmer-typewriter-theme", theme);
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => applyTheme('system');
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, [isDarkMode]);
+  }, [theme]);
+
+  // Update Language in DOM and Storage
+  useEffect(() => {
+    document.documentElement.lang = language;
+    localStorage.setItem("khmer-typewriter-lang", language);
+    // Update doc title placeholder if it's the default
+    if (docTitle === translations.en.newDocument || docTitle === translations.km.newDocument || docTitle === translations.fr.newDocument) {
+        setDocTitle(t.newDocument);
+    }
+  }, [language, t.newDocument, docTitle]);
 
   // Warn users before refresh
   useEffect(() => {
@@ -116,8 +166,24 @@ const App: React.FC = () => {
     if (editorRef.current) {
       const text = editorRef.current.innerText || "";
       setTextContent(text);
+
+      // Update font/size state from selection
+      try {
+        const font = document.queryCommandValue("fontName");
+        if (font) setCurrentFont(font.replace(/['"]/g, ""));
+        const size = document.queryCommandValue("fontSize");
+        if (size) setCurrentSize(size);
+      } catch (e) {
+        // Ignore errors from queryCommandValue
+      }
     }
   };
+
+  // Listen for selection changes to update toolbar state
+  useEffect(() => {
+    document.addEventListener("selectionchange", updateStats);
+    return () => document.removeEventListener("selectionchange", updateStats);
+  }, []);
 
   // --- Document Logic ---
 
@@ -127,7 +193,7 @@ const App: React.FC = () => {
 
   const createNewDocument = () => {
     if (textContent.trim().length > 0) {
-      if (!window.confirm("Start a new document? Unsaved changes will be lost.")) {
+      if (!window.confirm(t.confirmNew)) {
         return;
       }
     }
@@ -137,7 +203,7 @@ const App: React.FC = () => {
       updateStats();
     }
     setCurrentDocId(null);
-    setDocTitle("New Document");
+    setDocTitle(t.newDocument);
     setShowInvisibles(false); // Reset view mode
     if (isSidebarOpen) setIsSidebarOpen(false);
   };
@@ -146,7 +212,7 @@ const App: React.FC = () => {
     if (!editorRef.current) return;
 
     // Ask for document name
-    const inputName = prompt("Enter document name:", docTitle);
+    const inputName = prompt(t.enterDocName, docTitle);
     const finalTitle = inputName !== null && inputName.trim() !== "" ? inputName.trim() : docTitle;
     setDocTitle(finalTitle);
 
@@ -184,7 +250,7 @@ const App: React.FC = () => {
 
   const loadDocument = (doc: SavedDoc) => {
     if (textContent.trim().length > 0 && doc.id !== currentDocId) {
-      if (!window.confirm("Load document? Current unsaved changes might be lost.")) {
+      if (!window.confirm(t.confirmLoad)) {
         return;
       }
     }
@@ -204,21 +270,22 @@ const App: React.FC = () => {
 
   const deleteDocument = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this document?")) {
+    if (window.confirm(t.confirmDelete)) {
       const updatedDocs = savedDocs.filter((doc) => doc.id !== id);
       setSavedDocs(updatedDocs);
       saveDocsToStorage(updatedDocs);
 
       if (currentDocId === id) {
         setCurrentDocId(null);
-        setDocTitle("New Document");
+        setDocTitle(t.newDocument);
         // We do not clear content, treating it as an unsaved draft of the deleted file
       }
     }
   };
 
   const formatDate = (ts: number) => {
-    return new Date(ts).toLocaleDateString() + " " + new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const locale = language === 'km' ? 'km-KH' : language === 'fr' ? 'fr-FR' : 'en-US';
+    return new Date(ts).toLocaleDateString(locale) + " " + new Date(ts).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   };
 
   // --- Invisible Characters Logic ---
@@ -462,11 +529,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // if (keyData.code === "Space") {
-    //   insertCharacter(" ");
-    //   return;
-    // }
-
     if (keyData.code === "Tab") {
       insertCharacter("\t");
       return;
@@ -662,7 +724,7 @@ const App: React.FC = () => {
   };
 
   const clearText = () => {
-    if (window.confirm("Are you sure you want to clear all text?")) {
+    if (window.confirm(t.confirmClear)) {
       if (editorRef.current) {
         editorRef.current.innerHTML = "";
         updateStats();
@@ -699,6 +761,28 @@ const App: React.FC = () => {
     setIsFullScreen(!isFullScreen);
   };
 
+  const cycleTheme = () => {
+    const modes: Theme[] = ['system', 'light', 'dark'];
+    const nextIndex = (modes.indexOf(theme) + 1) % modes.length;
+    setTheme(modes[nextIndex]);
+  };
+
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light': return <Sun size={20} />;
+      case 'dark': return <Moon size={20} />;
+      case 'system': return <Monitor size={20} />;
+    }
+  };
+
+  const getThemeTitle = () => {
+    switch (theme) {
+      case 'light': return t.themeLight;
+      case 'dark': return t.themeDark;
+      case 'system': return t.themeSystem;
+    }
+  };
+
   const ToolbarButton = ({ onClick, icon: Icon, title, active = false, className = "" }: { onClick: () => void; icon: React.ElementType; title: string; active?: boolean; className?: string }) => (
     <button
       onClick={onClick}
@@ -710,6 +794,25 @@ const App: React.FC = () => {
     >
       <Icon size={18} />
     </button>
+  );
+
+  const ToolbarSelect = ({ value, onChange, options, title }: { value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: { value: string; label: string }[]; title: string }) => (
+    <div className="relative flex items-center" title={title}>
+      <select
+        value={value}
+        onChange={onChange}
+        className="appearance-none h-9 pl-2 pr-8 bg-transparent hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-medium transition-colors cursor-pointer outline-none focus:ring-2 focus:ring-primary/20 border-none"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+        <ChevronDown size={14} />
+      </div>
+    </div>
   );
 
   const Divider = () => <div className="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>;
@@ -730,7 +833,7 @@ const App: React.FC = () => {
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <FolderOpen size={20} className="text-primary" />
-            Saved Documents
+            {t.savedDocuments}
           </h2>
           <button onClick={() => setIsSidebarOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500">
             <X size={20} />
@@ -740,7 +843,7 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {savedDocs.length === 0 ? (
             <div className="text-center py-10 text-slate-500">
-              <p>No saved documents.</p>
+              <p>{t.savedDocuments === "Saved Documents" ? "No saved documents." : "គ្មានឯកសារបានរក្សាទុក។"}</p>
             </div>
           ) : (
             savedDocs.map((doc) => (
@@ -758,7 +861,7 @@ const App: React.FC = () => {
                   <button
                     onClick={(e) => deleteDocument(e, doc.id)}
                     className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                    title="Delete"
+                    title={t.delete}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -778,7 +881,7 @@ const App: React.FC = () => {
             className="w-full py-2 flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-medium transition-colors"
           >
             <FilePlus size={18} />
-            New Document
+            {t.newDocument}
           </button>
         </div>
       </div>
@@ -791,7 +894,7 @@ const App: React.FC = () => {
               {/* <Keyboard size={20} /> */}
               <img src="./khmer-typewriter.svg" alt="Khmer Typewriter" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white hidden sm:block">Khmer Typewriter</h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white hidden sm:block">{t.appTitle}</h1>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
@@ -800,23 +903,39 @@ const App: React.FC = () => {
               <button
                 onClick={saveDocument}
                 className="p-2 text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-                title="Save Document"
+                title={t.save}
               >
                 <Save size={20} />
-                <span className="text-sm font-medium hidden lg:inline">Save</span>
+                <span className="text-sm font-medium hidden lg:inline">{t.save}</span>
               </button>
               <button
                 onClick={() => setIsSidebarOpen(true)}
                 className="p-2 text-slate-600 dark:text-slate-300 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2 relative"
-                title="My Documents"
+                title={t.savedDocuments}
               >
                 <FolderOpen size={20} />
-                <span className="text-sm font-medium hidden lg:inline">Docs</span>
+                <span className="text-sm font-medium hidden lg:inline">{t.docs}</span>
                 {savedDocs.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full"></span>}
               </button>
             </div>
 
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+
+            {/* Language Selector */}
+            <div className="relative group">
+              <select 
+                value={language} 
+                onChange={(e) => setLanguage(e.target.value as Language)}
+                className="appearance-none bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-sm py-1.5 pl-8 pr-3 rounded-full cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="km">ខ្មែរ</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+              </select>
+              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <Globe size={16} />
+              </div>
+            </div>
 
             {/* Keyboard Mode Toggle */}
             <button
@@ -827,15 +946,16 @@ const App: React.FC = () => {
               title={isKhmerMode ? "Switch to System Keyboard" : "Switch to Khmer Keyboard"}
             >
               {isKhmerMode ? <Languages size={18} /> : <Globe size={18} />}
-              <span className="hidden sm:inline">{isKhmerMode ? "Khmer" : "System"}</span>
+              <span className="hidden sm:inline">{isKhmerMode ? t.khmer : t.system}</span>
             </button>
 
+            {/* Theme Toggle (Cycle) */}
             <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
+              onClick={cycleTheme}
               className="p-2 text-slate-500 hover:text-primary transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Toggle Theme"
+              title={getThemeTitle()}
             >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {getThemeIcon()}
             </button>
           </div>
         </header>
@@ -850,13 +970,13 @@ const App: React.FC = () => {
                 value={docTitle}
                 onChange={(e) => setDocTitle(e.target.value)}
                 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight bg-transparent border-none focus:ring-0 p-0 placeholder-slate-400 w-full"
-                placeholder="Document Title"
+                placeholder={t.enterDocName}
               />
               <Edit2 size={20} className="text-slate-400 opacity-50 shrink-0" />
             </div>
             <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2">
-              {currentDocId ? "Saved Document" : "Unsaved Draft"}
-              {currentDocId && <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">Saved</span>}
+              {currentDocId ? t.saved : t.unsavedDraft}
+              {currentDocId && <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">{t.saved}</span>}
             </p>
           </div>
         )}
@@ -873,40 +993,68 @@ const App: React.FC = () => {
           <div className="flex flex-wrap items-center gap-0.5 sm:gap-1 p-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             {isFullScreen && (
               <>
-                <ToolbarButton onClick={saveDocument} icon={Save} title="Save" />
-                <ToolbarButton onClick={() => setIsSidebarOpen(true)} icon={FolderOpen} title="Docs" />
+                <ToolbarButton onClick={saveDocument} icon={Save} title={t.save} />
+                <ToolbarButton onClick={() => setIsSidebarOpen(true)} icon={FolderOpen} title={t.docs} />
                 <Divider />
               </>
             )}
 
-            <ToolbarButton onClick={() => executeCommand("bold")} icon={Bold} title="Bold" />
-            <ToolbarButton onClick={() => executeCommand("italic")} icon={Italic} title="Italic" />
-            <ToolbarButton onClick={() => executeCommand("underline")} icon={Underline} title="Underline" />
-            <ToolbarButton onClick={() => executeCommand("strikeThrough")} icon={Strikethrough} title="Strikethrough" />
-            <ToolbarButton onClick={() => executeCommand("backColor", "yellow")} icon={Highlighter} title="Highlight" />
+            {/* Font & Size Selects */}
+            <ToolbarSelect 
+              title={t.font}
+              value={currentFont}
+              onChange={(e) => executeCommand("fontName", e.target.value)}
+              options={[
+                { value: "Kantumruy Pro", label: "Kantumruy Pro" },
+                { value: "Noto Sans Khmer", label: "Noto Sans Khmer" },
+                { value: "Inter", label: "Inter" },
+              ]}
+            />
+            <ToolbarSelect 
+              title={t.size}
+              value={currentSize}
+              onChange={(e) => executeCommand("fontSize", e.target.value)}
+              options={[
+                { value: "1", label: "1 (10px)" },
+                { value: "2", label: "2 (13px)" },
+                { value: "3", label: "3 (16px)" },
+                { value: "4", label: "4 (18px)" },
+                { value: "5", label: "5 (24px)" },
+                { value: "6", label: "6 (32px)" },
+                { value: "7", label: "7 (48px)" },
+              ]}
+            />
+            
+            <Divider />
+
+            <ToolbarButton onClick={() => executeCommand("bold")} icon={Bold} title={t.bold} />
+            <ToolbarButton onClick={() => executeCommand("italic")} icon={Italic} title={t.italic} />
+            <ToolbarButton onClick={() => executeCommand("underline")} icon={Underline} title={t.underline} />
+            <ToolbarButton onClick={() => executeCommand("strikeThrough")} icon={Strikethrough} title={t.strikethrough} />
+            <ToolbarButton onClick={() => executeCommand("backColor", "yellow")} icon={Highlighter} title={t.highlight} />
 
             <Divider />
 
-            <ToolbarButton onClick={() => executeCommand("justifyLeft")} icon={AlignLeft} title="Align Left" />
-            <ToolbarButton onClick={() => executeCommand("justifyCenter")} icon={AlignCenter} title="Align Center" />
-            <ToolbarButton onClick={() => executeCommand("justifyRight")} icon={AlignRight} title="Align Right" />
-            <ToolbarButton onClick={() => executeCommand("justifyFull")} icon={AlignJustify} title="Justify" />
+            <ToolbarButton onClick={() => executeCommand("justifyLeft")} icon={AlignLeft} title={t.alignLeft} />
+            <ToolbarButton onClick={() => executeCommand("justifyCenter")} icon={AlignCenter} title={t.alignCenter} />
+            <ToolbarButton onClick={() => executeCommand("justifyRight")} icon={AlignRight} title={t.alignRight} />
+            <ToolbarButton onClick={() => executeCommand("justifyFull")} icon={AlignJustify} title={t.justify} />
 
             <Divider />
 
-            <ToolbarButton onClick={() => executeCommand("insertUnorderedList")} icon={List} title="Bullet List" />
-            <ToolbarButton onClick={() => executeCommand("insertOrderedList")} icon={ListOrdered} title="Numbered List" />
+            <ToolbarButton onClick={() => executeCommand("insertUnorderedList")} icon={List} title={t.bulletList} />
+            <ToolbarButton onClick={() => executeCommand("insertOrderedList")} icon={ListOrdered} title={t.orderedList} />
 
             <Divider />
 
-            <ToolbarButton onClick={addLink} icon={LinkIcon} title="Insert Link" />
-            <ToolbarButton onClick={triggerImageUpload} icon={ImageIcon} title="Insert Image" />
+            <ToolbarButton onClick={addLink} icon={LinkIcon} title={t.insertLink} />
+            <ToolbarButton onClick={triggerImageUpload} icon={ImageIcon} title={t.insertImage} />
 
             <Divider />
 
-            <ToolbarButton onClick={toggleInvisibles} icon={showInvisibles ? Eye : EyeOff} title={showInvisibles ? "Hide Invisible Characters" : "Show Invisible Characters"} active={showInvisibles} />
+            <ToolbarButton onClick={toggleInvisibles} icon={showInvisibles ? Eye : EyeOff} title={showInvisibles ? t.hideInvisibles : t.showInvisibles} active={showInvisibles} />
 
-            <ToolbarButton onClick={toggleFullScreen} icon={isFullScreen ? Minimize : Maximize} title={isFullScreen ? "Exit Full Screen" : "Full Screen"} />
+            <ToolbarButton onClick={toggleFullScreen} icon={isFullScreen ? Minimize : Maximize} title={isFullScreen ? t.exitFullScreen : t.fullScreen} />
 
             <div className="flex-1 min-w-2.5"></div>
 
@@ -914,19 +1062,19 @@ const App: React.FC = () => {
               onClick={copyToClipboard}
               onMouseDown={(e) => e.preventDefault()}
               className="flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium transition-colors ml-1"
-              title="Copy text"
+              title={t.copy}
             >
               <Copy size={16} />
-              <span className="hidden sm:inline">Copy</span>
+              <span className="hidden sm:inline">{t.copy}</span>
             </button>
             <button
               onClick={clearText}
               onMouseDown={(e) => e.preventDefault()}
               className="flex items-center justify-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors"
-              title="Clear all"
+              title={t.clear}
             >
               <Trash2 size={16} />
-              <span className="hidden sm:inline">Clear</span>
+              <span className="hidden sm:inline">{t.clear}</span>
             </button>
           </div>
 
@@ -943,7 +1091,7 @@ const App: React.FC = () => {
             className={`w-full p-6 bg-white dark:bg-slate-800 text-xl sm:text-2xl font-khmer leading-relaxed outline-hidden overflow-y-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_a]:text-blue-500 [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg [&_img]:inline-block ${
               isFullScreen ? "flex-1 h-full" : "h-64 sm:h-80"
             }`}
-            data-placeholder="ចាប់ផ្តើមវាយអក្សរខ្មែរនៅទីនេះ... (Start typing Khmer here...)"
+            data-placeholder={`${t.placeholder} (${t.virtualKeyboardHint})`}
             spellCheck={true}
           />
 
@@ -951,21 +1099,21 @@ const App: React.FC = () => {
           <div className="flex items-center justify-end gap-6 px-4 py-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-xs font-medium text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="text-slate-900 dark:text-white font-bold">{charCount}</span>
-              <span>Characters</span>
+              <span>{t.characters}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-slate-900 dark:text-white font-bold">{wordCount}</span>
-              <span>Words</span>
+              <span>{t.words}</span>
             </div>
           </div>
         </div>
 
         {/* Virtual Keyboard */}
-        {!isFullScreen && <VirtualKeyboard isKhmerMode={isKhmerMode} state={keyboardState} onKeyPress={handleVirtualKeyPress} />}
+        {!isFullScreen && <VirtualKeyboard isKhmerMode={isKhmerMode} state={keyboardState} onKeyPress={handleVirtualKeyPress} hintText={t.virtualKeyboardHint} />}
       </main>
 
       {/* Footer */}
-      {!isFullScreen && <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">&copy; {new Date().getFullYear()} Khmer Typewriter. All rights reserved.</footer>}
+      {!isFullScreen && <footer className="py-6 text-center text-slate-400 dark:text-slate-600 text-sm">&copy; {new Date().getFullYear()} {t.footerRights}</footer>}
     </div>
   );
 };
