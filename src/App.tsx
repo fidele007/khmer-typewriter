@@ -648,7 +648,7 @@ const App: React.FC = () => {
     [isKhmerMode, isMac]
   );
 
-  const handleInput = useCallback((event: React.InputEvent<HTMLDivElement>) => {
+  const handleInput = useCallback((_event: React.InputEvent<HTMLDivElement>) => {
     // console.log("handleInput", event);
   }, []);
 
