@@ -96,6 +96,17 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
+  // Warn users before refresh
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // required for Safari
+    };
+
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
+
   // Statistics
   const charCount = textContent.length;
   // Simple word count approximation for mixed text
@@ -269,21 +280,6 @@ const App: React.FC = () => {
 
     return isIOS;
   };
-
-  const handleCompositionStart = useCallback(
-    (e: React.CompositionEvent<HTMLDivElement>) => {
-      if (isKhmerMode && isMac) {
-        (e.target as HTMLElement)?.setAttribute("contentEditable", "false");
-        setTimeout(function () {
-          (e.target as HTMLElement)?.setAttribute("contentEditable", "true");
-          if (document.activeElement !== editorRef.current) {
-            editorRef.current?.focus();
-          }
-        });
-      }
-    },
-    [isKhmerMode, isMac]
-  );
 
   const insertCharacter = useCallback(
     (char: string) => {
@@ -528,6 +524,8 @@ const App: React.FC = () => {
   // Physical Keyboard Handling
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // console.log("handleKeyDown", e);
+
       const code = e.code;
       const isRightAlt = e.getModifierState("AltGraph") || e.altKey;
 
@@ -563,7 +561,7 @@ const App: React.FC = () => {
       }
 
       // IME Logic
-      if (isKhmerMode && !e.ctrlKey && !e.metaKey) {
+      if (isKhmerMode && !e.ctrlKey) {
         const keyData = keyMap.get(code);
         if (keyData) {
           const isTypingKey = (!keyData.type || keyData.type === "char") && (keyData.km || keyData.kmShift || keyData.kmAlt);
@@ -578,12 +576,13 @@ const App: React.FC = () => {
             let char;
             if (isShift || (isCaps && !isNumberRow)) {
               char = keyData.kmShift;
-            } else if (isRightAlt) {
+            } else if (isRightAlt || e.metaKey) {
               char = keyData.kmAlt;
             } else {
               char = keyData.km;
             }
 
+            // console.log("char", char);
             if (char) {
               if (e.key === "Dead" && isKhmerMode && (isSafari || isIOSWebKit())) {
                 setTimeout(() => {
@@ -607,7 +606,7 @@ const App: React.FC = () => {
         }
       }, 0);
     },
-    [isKhmerMode, keyMap, insertCharacter, deleteSpanIfPossible]
+    [isKhmerMode, keyMap, isSafari, insertCharacter, deleteSpanIfPossible]
   );
 
   const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -631,6 +630,26 @@ const App: React.FC = () => {
 
       return { ...prev, activeKeys: newActive, isShift: newShift, isRightAlt: newRightAlt };
     });
+  }, []);
+
+  const handleComposition = useCallback(
+    (event: React.CompositionEvent<HTMLDivElement>) => {
+      // console.log(`${event.type}: ${event.data}`);
+      if (isKhmerMode && isMac) {
+        (event.target as HTMLElement)?.setAttribute("contentEditable", "false");
+        setTimeout(function () {
+          (event.target as HTMLElement)?.setAttribute("contentEditable", "true");
+          if (document.activeElement !== editorRef.current) {
+            editorRef.current?.focus();
+          }
+        });
+      }
+    },
+    [isKhmerMode, isMac]
+  );
+
+  const handleInput = useCallback((event: React.InputEvent<HTMLDivElement>) => {
+    // console.log("handleInput", event);
   }, []);
 
   // --- Toolbar Actions ---
@@ -915,7 +934,9 @@ const App: React.FC = () => {
           <div
             ref={editorRef}
             contentEditable
-            onCompositionStart={handleCompositionStart}
+            onCompositionStart={handleComposition}
+            onCompositionUpdate={handleComposition}
+            onBeforeInput={handleInput}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onInput={updateStats}
