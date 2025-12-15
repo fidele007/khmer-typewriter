@@ -17,14 +17,8 @@ const VirtualKeyboard: React.FC<VirtualKeyboardProps> = ({ isKhmerMode, state, o
         {KEYBOARD_LAYOUT.flat().map((keyData: KeyData, index) => {
           // Unique key for React list
           const keyId = `${keyData.code}-${index}`;
-          const isActive =
-            state.activeKeys.has(keyData.code) ||
-            (keyData.code === "ShiftLeft" && state.isShift) ||
-            (keyData.code === "ShiftRight" && state.isShift) ||
-            (keyData.code === "AltRight" && state.isRightAlt) ||
-            (keyData.code === "CapsLock" && state.isCaps);
 
-          return <Key isKhmerMode={isKhmerMode} key={keyId} data={keyData} isShift={state.isShift} isRightAlt={state.isRightAlt} isActive={isActive} onPress={onKeyPress} />;
+          return <Key key={keyId} isKhmerMode={isKhmerMode} data={keyData} isShift={state.isShift} isRightAlt={state.isRightAlt} activeKeys={state.activeKeys} onPress={onKeyPress} />;
         })}
       </div>
       <div className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">{hintText}</div>

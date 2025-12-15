@@ -7,17 +7,70 @@ interface KeyProps {
   data: KeyData;
   isShift: boolean;
   isRightAlt: boolean;
-  isActive: boolean;
+  activeKeys: Set<string>;
   onPress: (data: KeyData) => void;
 }
 
-const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, isActive, onPress }) => {
-  // Dynamic Styles
-  const baseStyles =
-    "relative flex items-center justify-center rounded-lg shadow-xs border-b-4 border-slate-300 dark:border-slate-900 transition-all duration-100 select-none active:border-b active:translate-y-[3px]";
-  const activeStyles = isActive
-    ? "bg-primary text-white border-primary-hover dark:border-blue-900 translate-y-[2px] border-b-2"
-    : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600";
+const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, activeKeys, onPress }) => {
+  // Common Styles
+  const baseStyles = "relative flex items-center justify-center rounded-lg shadow-xs transition-all duration-100 select-none active:translate-y-[1px]";
+  const normalKeyBase = "border-b-4 border-slate-300 dark:border-slate-900 active:border-b-2";
+
+  const getActiveStyles = (isActive: boolean) => {
+    return isActive
+      ? "bg-primary text-white border-primary-hover dark:border-blue-900 translate-y-[2px] border-b-2"
+      : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600";
+  };
+
+  const span = data.width || 2;
+
+  // --- Handle ArrowUpDown (Split Key) ---
+  if (data.code === "ArrowUpDown") {
+    const isUpActive = activeKeys.has("ArrowUp");
+    const isDownActive = activeKeys.has("ArrowDown");
+
+    return (
+      <div className="flex flex-col gap-1 h-14" style={{ gridColumn: `span ${span} / span ${span}` }}>
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onPress({ ...data, code: "ArrowUp" });
+          }}
+          className={`flex-1 flex items-center justify-center rounded-t-md rounded-b-sm shadow-xs border-b-2 border-slate-300 dark:border-slate-900 active:border-b active:translate-y-[1px] ${
+            isUpActive
+              ? "bg-primary text-white border-primary-hover dark:border-blue-900"
+              : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+          }`}
+        >
+          <ChevronUp size={14} />
+        </button>
+        <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            onPress({ ...data, code: "ArrowDown" });
+          }}
+          className={`flex-1 flex items-center justify-center rounded-t-sm rounded-b-md shadow-xs border-b-2 border-slate-300 dark:border-slate-900 active:border-b active:translate-y-[1px] ${
+            isDownActive
+              ? "bg-primary text-white border-primary-hover dark:border-blue-900"
+              : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+          }`}
+        >
+          <ChevronDown size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  // --- Normal Keys ---
+
+  const isActive =
+    activeKeys.has(data.code) ||
+    (data.code === "ShiftLeft" && isShift) ||
+    (data.code === "ShiftRight" && isShift) ||
+    (data.code === "AltRight" && isRightAlt) ||
+    (data.code === "CapsLock" && activeKeys.has("CapsLock")); // CapsLock usually tracked via modifier state, but here simplified
+
+  const activeStyleClass = getActiveStyles(isActive);
 
   // Custom styling for special keys
   const isSpecial = data.type === "action" || data.type === "modifier";
@@ -29,13 +82,6 @@ const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, isAct
     if (data.icon === "ChevronRight") return <ChevronRight size={20} />;
     if (data.icon === "ChevronUp") return <ChevronUp size={20} />;
     if (data.icon === "ChevronDown") return <ChevronDown size={20} />;
-    // if (data.icon === "ChevronsUpDown")
-    //   return (
-    //     <div className="flex flex-col items-center justify-center gap-2">
-    //       <ChevronUp size={20} />
-    //       <ChevronDown size={20} />
-    //     </div>
-    //   );
     return null;
   };
 
@@ -79,11 +125,8 @@ const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, isAct
     onPress(data);
   };
 
-  // Use inline style for precise grid spanning
-  const span = data.width || 2;
-
   return (
-    <button onMouseDown={handleMouseDown} className={`${baseStyles} ${activeStyles} ${fontSize} h-14`} style={{ gridColumn: `span ${span} / span ${span}` }} type="button">
+    <button onMouseDown={handleMouseDown} className={`${baseStyles} ${normalKeyBase} ${activeStyleClass} ${fontSize} h-14`} style={{ gridColumn: `span ${span} / span ${span}` }} type="button">
       {content}
     </button>
   );
