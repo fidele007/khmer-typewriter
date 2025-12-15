@@ -1,4 +1,4 @@
-import { Language } from './types';
+import type { Language } from "./types";
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
@@ -144,5 +144,5 @@ export const translations: Record<Language, Record<string, string>> = {
     themeSystem: "Thème système",
     themeLight: "Mode clair",
     themeDark: "Mode sombre",
-  }
+  },
 };
