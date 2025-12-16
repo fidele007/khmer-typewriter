@@ -26,7 +26,19 @@ export const ToolbarButton = ({
   </button>
 );
 
-export const ToolbarSelect = ({ value, onSelect, options, title }: { value: string; onSelect: (value: string) => void; options: { value: string; label: string }[]; title: string }) => {
+export const ToolbarSelect = ({
+  value,
+  onSelect,
+  options,
+  title,
+  width,
+}: {
+  value: string;
+  onSelect: (value: string) => void;
+  options: { value: string; label: string }[];
+  title: string;
+  width?: number;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +62,8 @@ export const ToolbarSelect = ({ value, onSelect, options, title }: { value: stri
           isOpen ? "bg-slate-200 dark:bg-slate-700 text-primary" : "text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
         }`}
       >
-        <span className="truncate max-w-[100px] text-left">{selectedLabel}</span>
-        <ChevronDown size={14} className={`transition-transform duration-200 opacity-50 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`} />
+        <span className={`truncate text-left ${width ? `min-w-[${width}px] max-w-[${width}px] w-[${width}px]` : "max-w-[150px]"}`}>{selectedLabel}</span>
+        <ChevronDown size={14} className={`transition-transform duration-200 opacity-50 shrink-0 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
@@ -68,7 +80,7 @@ export const ToolbarSelect = ({ value, onSelect, options, title }: { value: stri
               }`}
             >
               <span className={opt.value === value ? "font-semibold" : ""}>{opt.label}</span>
-              {value === opt.value && <Check size={14} />}
+              {value === opt.value && <Check className="ml-2" size={14} />}
             </button>
           ))}
         </div>

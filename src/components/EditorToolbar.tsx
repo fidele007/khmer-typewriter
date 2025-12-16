@@ -81,19 +81,21 @@ const EditorToolbar: React.FC<EditorToolbarProps> = ({
           { value: "Noto Sans Khmer", label: "Noto Sans Khmer" },
           { value: "Inter", label: "Inter" },
         ]}
+        width={140}
       />
+      {/* There are 7 possible values for the `fontSize` execCommand */}
       <ToolbarSelect
         title={t.size}
         value={currentSize}
         onSelect={(val) => onSizeChange(val)}
         options={[
-          { value: "1", label: "10px" },
-          { value: "2", label: "13px" },
-          { value: "3", label: "16px" },
-          { value: "4", label: "18px" },
-          { value: "5", label: "24px" },
-          { value: "6", label: "32px" },
-          { value: "7", label: "48px" },
+          { value: "1", label: "10" },
+          { value: "2", label: "13" },
+          { value: "3", label: "16" },
+          { value: "4", label: "18" },
+          { value: "5", label: "24" },
+          { value: "6", label: "32" },
+          { value: "7", label: "48" },
         ]}
       />
 

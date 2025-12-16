@@ -6,7 +6,7 @@ import DocumentsSidebar from "./components/DocumentsSidebar";
 import Header from "./components/Header";
 import EditorToolbar from "./components/EditorToolbar";
 import EditorArea from "./components/EditorArea";
-import { KEYBOARD_LAYOUT } from "./lib/constants";
+import { KEYBOARD_LAYOUT, PREF_KEYS } from "./lib/constants";
 import type { KeyboardState, KeyData, Language, Theme } from "./lib/types";
 import { translations } from "./lib/translations";
 
@@ -20,29 +20,43 @@ interface SavedDoc {
 const App: React.FC = () => {
   // --- State ---
   const [textContent, setTextContent] = useState("");
-  const [docTitle, setDocTitle] = useState("New Document");
   const [isKhmerMode, setIsKhmerMode] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showInvisibles, setShowInvisibles] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Theme State
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("khmer-typewriter-theme") as Theme;
-    return saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+    const savedTheme = localStorage.getItem(PREF_KEYS.theme) as Theme;
+    return savedTheme === "light" || savedTheme === "dark" || savedTheme === "system" ? savedTheme : "system";
   });
 
   // Localization State
   const [language, setLanguage] = useState<Language>(() => {
-    const saved = localStorage.getItem("khmer-typewriter-lang");
-    return saved === "en" || saved === "km" || saved === "fr" ? saved : "km";
+    const savedLanguage = localStorage.getItem(PREF_KEYS.lang);
+    return savedLanguage === "en" || savedLanguage === "km" || savedLanguage === "fr" ? savedLanguage : "km";
   });
+  const t = translations[language];
+
+  const [docTitle, setDocTitle] = useState(t.newDocument);
+  const [isCustomTitle, setIsCustomTitle] = useState(false);
 
   // Editor State
   const [currentFont, setCurrentFont] = useState("Kantumruy Pro");
-  const [currentSize, setCurrentSize] = useState("3");
+  const [currentSize, setCurrentSize] = useState("1");
 
   // Document Management State
-  const [savedDocs, setSavedDocs] = useState<SavedDoc[]>([]);
+  const [savedDocs, setSavedDocs] = useState<SavedDoc[]>(() => {
+    const stored = localStorage.getItem(PREF_KEYS.docs);
+    if (!stored) return [];
+
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse saved docs", e);
+      return [];
+    }
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentDocId, setCurrentDocId] = useState<string | null>(null);
 
@@ -56,8 +70,6 @@ const App: React.FC = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const t = translations[language];
-
   // --- Initialization & Effects ---
 
   // Flatten keyboard layout for O(1) lookup
@@ -65,18 +77,6 @@ const App: React.FC = () => {
     const map = new Map<string, KeyData>();
     KEYBOARD_LAYOUT.flat().forEach((key) => map.set(key.code, key));
     return map;
-  }, []);
-
-  // Load Saved Docs from LocalStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("khmer-typewriter-docs");
-    if (stored) {
-      try {
-        setSavedDocs(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse saved docs", e);
-      }
-    }
   }, []);
 
   // Theme Management
@@ -98,7 +98,7 @@ const App: React.FC = () => {
     };
 
     applyTheme(theme);
-    localStorage.setItem("khmer-typewriter-theme", theme);
+    localStorage.setItem(PREF_KEYS.theme, theme);
 
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -111,23 +111,21 @@ const App: React.FC = () => {
   // Update Language in DOM and Storage
   useEffect(() => {
     document.documentElement.lang = language;
-    localStorage.setItem("khmer-typewriter-lang", language);
-    // Update doc title placeholder if it's the default
-    if (docTitle === translations.en.newDocument || docTitle === translations.km.newDocument || docTitle === translations.fr.newDocument) {
-      setDocTitle(t.newDocument);
-    }
-  }, [language, t.newDocument, docTitle]);
+    localStorage.setItem(PREF_KEYS.lang, language);
+  }, [language]);
 
   // Warn users before refresh
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+
       e.preventDefault();
       e.returnValue = ""; // required for Safari
     };
 
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, []);
+  }, [isDirty]);
 
   // Statistics
   const charCount = textContent.length;
@@ -136,13 +134,15 @@ const App: React.FC = () => {
 
   const updateStats = () => {
     if (editorRef.current) {
+      setIsDirty(true);
+
       const text = editorRef.current.innerText || "";
       setTextContent(text);
 
       // Update font/size state from selection
       try {
         const font = document.queryCommandValue("fontName");
-        if (font) setCurrentFont(font.replace(/['"]/g, ""));
+        if (font) setCurrentFont(font.replace(/['"]/g, "").split(",")[0]);
         const size = document.queryCommandValue("fontSize");
         if (size) setCurrentSize(size);
       } catch (e) {
@@ -159,8 +159,13 @@ const App: React.FC = () => {
 
   // --- Document Logic ---
 
+  const onDocTitleChange = (newTitle: string) => {
+    setDocTitle(newTitle);
+    setIsCustomTitle(true);
+  };
+
   const saveDocsToStorage = (docs: SavedDoc[]) => {
-    localStorage.setItem("khmer-typewriter-docs", JSON.stringify(docs));
+    localStorage.setItem(PREF_KEYS.docs, JSON.stringify(docs));
   };
 
   const createNewDocument = () => {
@@ -217,6 +222,8 @@ const App: React.FC = () => {
 
     setSavedDocs(updatedDocs);
     saveDocsToStorage(updatedDocs);
+
+    setIsDirty(false);
   };
 
   const loadDocument = (doc: SavedDoc) => {
@@ -788,9 +795,9 @@ const App: React.FC = () => {
           <div className="flex flex-col gap-1 w-full">
             <div className="flex items-center gap-2">
               <input
-                value={docTitle}
-                onChange={(e) => setDocTitle(e.target.value)}
-                className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight bg-transparent border-none focus:ring-0 p-0 placeholder-slate-400 w-full"
+                value={isCustomTitle ? docTitle : t.newDocument}
+                onChange={(e) => onDocTitleChange(e.target.value)}
+                className="text-3xl/relaxed sm:text-4xl/relaxed font-bold text-slate-900 dark:text-white tracking-tight bg-transparent border-none focus:ring-0 p-0 placeholder-slate-400 w-full"
                 placeholder={t.enterDocName}
               />
               <Edit2 size={20} className="text-slate-400 opacity-50 shrink-0" />
@@ -838,7 +845,7 @@ const App: React.FC = () => {
             handleKeyDown={handleKeyDown}
             handleKeyUp={handleKeyUp}
             updateStats={updateStats}
-            placeholder={`${t.placeholder} (${t.virtualKeyboardHint})`}
+            placeholder={`${t.placeholder}`}
           />
 
           {/* Status Bar */}

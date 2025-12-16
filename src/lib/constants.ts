@@ -1,5 +1,11 @@
 import type { KeyData } from "./types";
 
+export const PREF_KEYS = {
+  theme: "theme",
+  lang: "lang",
+  docs: "docs",
+};
+
 // Based on a 30-column grid system for better alignment
 // Regular keys are 2 cols wide.
 export const KEYBOARD_LAYOUT: KeyData[][] = [

@@ -36,7 +36,7 @@ const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, activ
             e.preventDefault();
             onPress({ ...data, code: "ArrowUp" });
           }}
-          className={`flex-1 flex items-center justify-center rounded-t-md rounded-b-sm shadow-xs border-b-2 border-slate-300 dark:border-slate-900 active:border-b active:translate-y-[1px] ${
+          className={`flex-1 flex items-center justify-center rounded-t-md rounded-b-sm shadow-xs border-b-2 border-slate-300 dark:border-slate-900 active:border-b active:translate-y-px ${
             isUpActive
               ? "bg-primary text-white border-primary-hover dark:border-blue-900"
               : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
@@ -49,7 +49,7 @@ const Key: React.FC<KeyProps> = ({ isKhmerMode, data, isShift, isRightAlt, activ
             e.preventDefault();
             onPress({ ...data, code: "ArrowDown" });
           }}
-          className={`flex-1 flex items-center justify-center rounded-t-sm rounded-b-md shadow-xs border-b-2 border-slate-300 dark:border-slate-900 active:border-b active:translate-y-[1px] ${
+          className={`flex-1 flex items-center justify-center rounded-t-sm rounded-b-md shadow-xs border-b-2 border-slate-300 dark:border-slate-900 active:border-b active:translate-y-px ${
             isDownActive
               ? "bg-primary text-white border-primary-hover dark:border-blue-900"
               : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
